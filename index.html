@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1:1 Hub — Manager Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.employee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.employee-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.employee-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #ccc;
+}
+
+.emp-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent-text);
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.emp-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.emp-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.emp-stat {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.emp-stat strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.emp-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.link-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary);
+  word-break: break-all;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 4px;
+}
+
+.link-box:hover { background: var(--accent-light); color: var(--accent-text); }
+
+.link-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.manager-pin-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 32px;
+  max-width: 400px;
+}
+
+.manager-pin-section h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.manager-pin-section p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+#pinDisplay {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  font-family: var(--font-mono, monospace);
+  margin-bottom: 12px;
+}
+
+.locked-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 36px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.lock-card svg {
+  width: 36px;
+  height: 36px;
+  color: var(--accent);
+  margin: 0 auto 14px;
+}
+
+.lock-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.lock-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.pin-input {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.pin-error {
+  color: var(--red);
+  font-size: 13px;
+  margin-top: 8px;
+  min-height: 18px;
+}
+</style>
+</head>
+<body>
+
+<div class="locked-overlay" id="lockScreen">
+  <div class="lock-card">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <h2>Manager dashboard</h2>
+    <p>Enter your PIN to access all employee pages.</p>
+    <input class="pin-input" type="password" id="pinInput" placeholder="••••" maxlength="6" autocomplete="off">
+    <button class="btn btn-primary" style="width:100%" onclick="checkPin()">Unlock</button>
+    <div class="pin-error" id="pinError"></div>
+    <p style="margin-top:16px; font-size:12px; color:var(--text-muted)">First time? Your PIN is <strong>1234</strong> — change it below after logging in.</p>
+  </div>
+</div>
+
+<nav class="topbar">
+  <div class="topbar-brand">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    1:1 Hub
+  </div>
+  <div class="topbar-right">Manager view</div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>Your team</h1>
+    <p>Click a card to open that employee's 1:1 page, or copy their unique link to share with them.</p>
+  </div>
+
+  <div class="employee-grid" id="employeeGrid"></div>
+
+  <div class="manager-pin-section card">
+    <div class="card-body">
+      <h2>Change your manager PIN</h2>
+      <p>This PIN protects access to this dashboard.</p>
+      <div class="field">
+        <label class="field-label">New PIN (4–6 digits)</label>
+        <input type="password" id="newPin" placeholder="Enter new PIN" maxlength="6" style="max-width:180px">
+      </div>
+      <div class="field">
+        <label class="field-label">Confirm PIN</label>
+        <input type="password" id="confirmPin" placeholder="Confirm PIN" maxlength="6" style="max-width:180px">
+      </div>
+      <button class="btn btn-primary" onclick="changePin()">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/employees.js"></script>
+<script src="assets/common.js"></script>
+<script>
+const DEFAULT_PIN = '1234';
+
+function getPin() {
+  return localStorage.getItem('managerPin') || DEFAULT_PIN;
+}
+
+function checkPin() {
+  const val = document.getElementById('pinInput').value.trim();
+  if (val === getPin()) {
+    document.getElementById('lockScreen').style.display = 'none';
+    renderGrid();
+  } else {
+    document.getElementById('pinError').textContent = 'Incorrect PIN. Try again.';
+    document.getElementById('pinInput').value = '';
+  }
+}
+
+document.getElementById('pinInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPin();
+});
+
+function changePin() {
+  const np = document.getElementById('newPin').value.trim();
+  const cp = document.getElementById('confirmPin').value.trim();
+  if (!np || np.length < 4) return showToast('PIN must be at least 4 digits.');
+  if (np !== cp) return showToast('PINs do not match.');
+  if (!/^\d+$/.test(np)) return showToast('PIN must be digits only.');
+  localStorage.setItem('managerPin', np);
+  document.getElementById('newPin').value = '';
+  document.getElementById('confirmPin').value = '';
+  showToast('PIN updated successfully.');
+}
+
+function getBaseUrl() {
+  const loc = window.location.href;
+  return loc.substring(0, loc.lastIndexOf('/') + 1);
+}
+
+function renderGrid() {
+  const grid = document.getElementById('employeeGrid');
+  grid.innerHTML = '';
+
+  EMPLOYEES.forEach(emp => {
+    const tasks = Store.get(`tasks_${emp.id}`);
+    const goals = Store.get(`goals_${emp.id}`);
+    const openTasks = tasks.filter(t => t.status !== 'Done').length;
+    const doneGoals = goals.filter(g => g.status === 'Done').length;
+
+    const empUrl = `${getBaseUrl()}employees/${emp.token}.html`;
+
+    const card = document.createElement('div');
+    card.className = 'employee-card';
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="emp-avatar">${emp.name[0]}</div>
+        <div class="emp-info">
+          <h3>${emp.name}</h3>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">1:1 page</div>
+        </div>
+      </div>
+      <div class="emp-stats">
+        <div class="emp-stat"><strong>${openTasks}</strong>Open tasks</div>
+        <div class="emp-stat"><strong>${goals.length}</strong>Goals</div>
+        <div class="emp-stat"><strong>${doneGoals}</strong>Completed</div>
+      </div>
+      <div class="emp-actions">
+        <a href="employees/${emp.token}.html" class="btn btn-primary btn-sm">Open page</a>
+      </div>
+      <div>
+        <div class="link-label">Employee link — click to copy</div>
+        <div class="link-box" onclick="copyLink('${empUrl}', this)">${empUrl}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function copyLink(url, el) {
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Link copied to clipboard!');
+  });
+}
+</script>
+</body>
+</html>
