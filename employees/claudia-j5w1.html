@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1:1 — Claudia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+.header-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header-name { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.header-sub { font-size: 13px; color: var(--text-muted); margin-top: 1px; }
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 24px;
+  overflow-x: auto;
+}
+.tab {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  background: none;
+  border-top: none; border-left: none; border-right: none;
+  font-family: var(--font);
+  transition: color 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-panel { display: none; padding: 28px 0; }
+.tab-panel.active { display: block; }
+.notes-area { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.notes-area textarea { border: none; outline: none; padding: 0; font-size: 14px; line-height: 1.8; color: var(--text); background: transparent; min-height: 200px; }
+.save-indicator { font-size: 11px; color: var(--text-muted); margin-top: 8px; text-align: right; }
+.goals-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.progress-bar-track { width: 100px; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
+.goal-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.goal-item:last-child { border-bottom: none; }
+.goal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.goal-title { font-size: 14px; font-weight: 500; }
+.goal-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.goal-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.goal-status-select { font-size: 12px; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--border); cursor: pointer; font-family: var(--font); background: var(--surface); color: var(--text); }
+.loading-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+.sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 5px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent-text);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center">C</div>
+    <div>
+      <div class="header-name">Claudia</div>
+      <div class="header-sub">1:1 notes &amp; goals</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="syncStatus" style="font-size:12px;color:var(--text-muted)"></div>
+    <a href="../index.html" class="btn btn-ghost btn-sm" style="font-size:12px">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 12l6-6m-6 6 6 6"/></svg>
+      Manager view
+    </a>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('tasks', this)">Tasks</button>
+  <button class="tab" onclick="switchTab('goals', this)">Goals</button>
+  <button class="tab" onclick="switchTab('notes', this)">Notes</button>
+</div>
+
+<div class="container">
+
+  <!-- TASKS TAB -->
+  <div class="tab-panel active" id="panel-tasks">
+    <div class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:600">Tasks</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('addTaskModal')">+ Add task</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm filter-btn active" onclick="filterTasks('all', this)">All</button>
+        <button class="btn btn-ghost btn-sm filter-btn" onclick="filterTasks('open', this)">Open</button>
+        <button class="btn btn-ghost btn-sm filter-btn" onclick="filterTasks('done', this)">Done</button>
+        <button class="btn btn-ghost btn-sm filter-btn" onclick="filterTasks('High', this)">High urgency</button>
+      </div>
+      <div class="card" style="overflow:auto">
+        <table class="data-table" id="taskTable">
+          <thead>
+            <tr>
+              <th style="min-width:180px">Task</th>
+              <th style="min-width:100px">Due date</th>
+              <th>Urgency</th>
+              <th style="min-width:160px">Details</th>
+              <th style="min-width:160px">Comments / blockers</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="taskBody"></tbody>
+        </table>
+        <div class="empty-state" id="taskEmpty" style="display:none">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2"/></svg>
+          No tasks yet — add one above.
+        </div>
+        <div class="loading-state" id="taskLoading">Loading tasks…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOALS TAB -->
+  <div class="tab-panel" id="panel-goals">
+    <div class="section">
+      <div class="goals-header">
+        <div style="font-size:15px;font-weight:600">Goals</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
+            <div class="progress-bar-track"><div class="progress-bar-fill" id="goalProgressBar" style="width:0%"></div></div>
+            <span id="goalProgressText">0 / 0 done</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addGoalModal')">+ Add goal</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" id="goalList">
+          <div class="loading-state" id="goalLoading">Loading goals…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES TAB -->
+  <div class="tab-panel" id="panel-notes">
+    <div class="section">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px">Shared notes</div>
+      <div class="notes-area card">
+        <textarea id="notesArea" placeholder="Use this space for meeting notes, general updates, anything you want to capture together…"></textarea>
+        <div class="save-indicator" id="saveIndicator">—</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-backdrop" id="addTaskModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="taskModalTitle">Add task</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('addTaskModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editTaskId">
+      <div class="field"><label class="field-label">Task</label><input type="text" id="tTask" placeholder="What needs to be done?"></div>
+      <div class="grid-2">
+        <div class="field"><label class="field-label">Due date</label><input type="date" id="tDue"></div>
+        <div class="field"><label class="field-label">Urgency</label>
+          <select id="tUrgency"><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option></select>
+        </div>
+      </div>
+      <div class="field"><label class="field-label">Details</label><textarea id="tDetails" placeholder="Any extra context…" style="min-height:60px"></textarea></div>
+      <div class="field"><label class="field-label">Comments / blockers</label><textarea id="tBlockers" placeholder="What's getting in the way?" style="min-height:60px"></textarea></div>
+      <div class="field"><label class="field-label">Status</label>
+        <select id="tStatus"><option value="Not started">Not started</option><option value="In progress">In progress</option><option value="Done">Done</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addTaskModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">Save task</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD GOAL MODAL -->
+<div class="modal-backdrop" id="addGoalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="goalModalTitle">Add goal</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('addGoalModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editGoalId">
+      <div class="field"><label class="field-label">Goal</label><input type="text" id="gTitle" placeholder="What do you want to achieve?"></div>
+      <div class="grid-2">
+        <div class="field"><label class="field-label">Target date</label><input type="date" id="gDue"></div>
+        <div class="field"><label class="field-label">Status</label>
+          <select id="gStatus"><option value="Not started">Not started</option><option value="In progress">In progress</option><option value="Done">Done</option></select>
+        </div>
+      </div>
+      <div class="field"><label class="field-label">Notes</label><textarea id="gNotes" placeholder="How will you measure this goal?" style="min-height:72px"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addGoalModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGoal()">Save goal</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/common.js"></script>
+<script type="module">
+import { db, collection, doc, setDoc, deleteDoc, onSnapshot, getDoc } from '../assets/firebase-config.js';
+
+const EMP_ID = 'claudia';
+let currentFilter = 'all';
+let tasks = [];
+let goals = [];
+
+// Sync indicator
+function setSyncing() {
+  document.getElementById('syncStatus').innerHTML = '<span class="sync-dot"></span>Syncing…';
+}
+function setSynced() {
+  document.getElementById('syncStatus').innerHTML = '✓ Synced';
+  setTimeout(() => { document.getElementById('syncStatus').innerHTML = ''; }, 2000);
+}
+
+// --- TABS ---
+window.switchTab = function(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+};
+
+// --- TASKS ---
+function renderTasks() {
+  const tbody = document.getElementById('taskBody');
+  const empty = document.getElementById('taskEmpty');
+  const loading = document.getElementById('taskLoading');
+  loading.style.display = 'none';
+
+  let filtered = tasks;
+  if (currentFilter === 'open') filtered = tasks.filter(t => t.status !== 'Done');
+  else if (currentFilter === 'done') filtered = tasks.filter(t => t.status === 'Done');
+  else if (currentFilter === 'High') filtered = tasks.filter(t => t.urgency === 'High');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.map(t => `
+    <tr>
+      <td style="font-weight:500">${t.task}</td>
+      <td style="white-space:nowrap">${fmtDate(t.due)}</td>
+      <td>${urgencyBadge(t.urgency)}</td>
+      <td style="color:var(--text-secondary);font-size:12px">${t.details || '—'}</td>
+      <td style="color:var(--text-secondary);font-size:12px">${t.blockers || '—'}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="window.editTask('${t.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="window.deleteTask('${t.id}')">Del</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.filterTasks = function(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+};
+
+window.saveTask = async function() {
+  const task = document.getElementById('tTask').value.trim();
+  if (!task) return showToast('Please enter a task name.');
+  const editId = document.getElementById('editTaskId').value;
+  const id = editId || uid();
+  const obj = {
+    id, task,
+    due: document.getElementById('tDue').value,
+    urgency: document.getElementById('tUrgency').value,
+    details: document.getElementById('tDetails').value.trim(),
+    blockers: document.getElementById('tBlockers').value.trim(),
+    status: document.getElementById('tStatus').value,
+    updatedAt: Date.now()
+  };
+  setSyncing();
+  await setDoc(doc(db, 'employees', EMP_ID, 'tasks', id), obj);
+  setSynced();
+  closeModal('addTaskModal');
+  clearTaskForm();
+  showToast(editId ? 'Task updated.' : 'Task added.');
+};
+
+window.editTask = function(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('editTaskId').value = id;
+  document.getElementById('tTask').value = t.task;
+  document.getElementById('tDue').value = t.due || '';
+  document.getElementById('tUrgency').value = t.urgency;
+  document.getElementById('tDetails').value = t.details || '';
+  document.getElementById('tBlockers').value = t.blockers || '';
+  document.getElementById('tStatus').value = t.status;
+  document.getElementById('taskModalTitle').textContent = 'Edit task';
+  openModal('addTaskModal');
+};
+
+window.deleteTask = async function(id) {
+  if (!confirm('Delete this task?')) return;
+  setSyncing();
+  await deleteDoc(doc(db, 'employees', EMP_ID, 'tasks', id));
+  setSynced();
+  showToast('Task deleted.');
+};
+
+function clearTaskForm() {
+  ['editTaskId','tTask','tDue','tDetails','tBlockers'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('tUrgency').value = 'Low';
+  document.getElementById('tStatus').value = 'Not started';
+  document.getElementById('taskModalTitle').textContent = 'Add task';
+}
+
+// --- GOALS ---
+function renderGoals() {
+  const list = document.getElementById('goalList');
+  document.getElementById('goalLoading').style.display = 'none';
+  const done = goals.filter(g => g.status === 'Done').length;
+  const pct = goals.length ? Math.round((done / goals.length) * 100) : 0;
+  document.getElementById('goalProgressBar').style.width = pct + '%';
+  document.getElementById('goalProgressText').textContent = `${done} / ${goals.length} done`;
+
+  if (goals.length === 0) {
+    list.innerHTML = `<div class="empty-state"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>No goals yet — add one above.</div>`;
+    return;
+  }
+
+  list.innerHTML = goals.map(g => `
+    <div class="goal-item">
+      <div class="goal-top">
+        <div>
+          <div class="goal-title">${g.title}</div>
+          <div class="goal-meta">${g.due ? 'Target: ' + fmtDate(g.due) : 'No target date'}${g.notes ? ' · ' + g.notes : ''}</div>
+        </div>
+        <div class="goal-actions">
+          <select class="goal-status-select" onchange="window.updateGoalStatus('${g.id}', this.value)">
+            <option ${g.status==='Not started'?'selected':''}>Not started</option>
+            <option ${g.status==='In progress'?'selected':''}>In progress</option>
+            <option ${g.status==='Done'?'selected':''}>Done</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="window.editGoal('${g.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="window.deleteGoal('${g.id}')">Del</button>
+        </div>
+      </div>
+      ${statusBadge(g.status)}
+    </div>
+  `).join('');
+}
+
+window.updateGoalStatus = async function(id, status) {
+  const g = goals.find(x => x.id === id);
+  if (!g) return;
+  setSyncing();
+  await setDoc(doc(db, 'employees', EMP_ID, 'goals', id), { ...g, status, updatedAt: Date.now() });
+  setSynced();
+  showToast('Status updated.');
+};
+
+window.saveGoal = async function() {
+  const title = document.getElementById('gTitle').value.trim();
+  if (!title) return showToast('Please enter a goal.');
+  const editId = document.getElementById('editGoalId').value;
+  const id = editId || uid();
+  const obj = {
+    id, title,
+    due: document.getElementById('gDue').value,
+    status: document.getElementById('gStatus').value,
+    notes: document.getElementById('gNotes').value.trim(),
+    updatedAt: Date.now()
+  };
+  setSyncing();
+  await setDoc(doc(db, 'employees', EMP_ID, 'goals', id), obj);
+  setSynced();
+  closeModal('addGoalModal');
+  clearGoalForm();
+  showToast(editId ? 'Goal updated.' : 'Goal added.');
+};
+
+window.editGoal = function(id) {
+  const g = goals.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('editGoalId').value = id;
+  document.getElementById('gTitle').value = g.title;
+  document.getElementById('gDue').value = g.due || '';
+  document.getElementById('gStatus').value = g.status;
+  document.getElementById('gNotes').value = g.notes || '';
+  document.getElementById('goalModalTitle').textContent = 'Edit goal';
+  openModal('addGoalModal');
+};
+
+window.deleteGoal = async function(id) {
+  if (!confirm('Delete this goal?')) return;
+  setSyncing();
+  await deleteDoc(doc(db, 'employees', EMP_ID, 'goals', id));
+  setSynced();
+  showToast('Goal deleted.');
+};
+
+function clearGoalForm() {
+  ['editGoalId','gTitle','gDue','gNotes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gStatus').value = 'Not started';
+  document.getElementById('goalModalTitle').textContent = 'Add goal';
+}
+
+// --- NOTES ---
+const notesArea = document.getElementById('notesArea');
+const saveIndicator = document.getElementById('saveIndicator');
+let noteTimer;
+
+// Load notes
+getDoc(doc(db, 'employees', EMP_ID, 'notes', 'shared')).then(snap => {
+  if (snap.exists()) notesArea.value = snap.data().content || '';
+  saveIndicator.textContent = 'Auto-saved';
+});
+
+notesArea.addEventListener('input', () => {
+  saveIndicator.textContent = 'Saving…';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(async () => {
+    setSyncing();
+    await setDoc(doc(db, 'employees', EMP_ID, 'notes', 'shared'), { content: notesArea.value, updatedAt: Date.now() });
+    setSynced();
+    saveIndicator.textContent = 'Auto-saved';
+  }, 1000);
+});
+
+// --- REAL-TIME LISTENERS ---
+onSnapshot(collection(db, 'employees', EMP_ID, 'tasks'), snap => {
+  tasks = snap.docs.map(d => d.data()).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+  renderTasks();
+});
+
+onSnapshot(collection(db, 'employees', EMP_ID, 'goals'), snap => {
+  goals = snap.docs.map(d => d.data()).sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+  renderGoals();
+});
+</script>
+</body>
+</html>
